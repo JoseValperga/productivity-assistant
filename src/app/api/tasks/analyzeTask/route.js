@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { streamObject, tool } from "ai";
+import { streamObject, generateObject, tool } from "ai";
 import { z } from "zod";
 import dotenv from "dotenv";
 
@@ -15,75 +15,69 @@ export async function POST(request) {
     const { partialObjectStream } = await streamObject({
       model: openai("gpt-4o"),
 
-      system: `You're a productivity assistant and manage a daily meeting schedule. 
+      system: `You're a productivity assistant and manage a daily meeting schedule.
         You should keep in mind that you manage dates, times and duration of meetings. All answers must be in ${language}.
         - You cannot schedule meetings on dates and times before ${today} except when you move the meeting. 
         - If the date is not specified, take by default ${today}. 
         - You can schedule meetings, delete meetings, move meetings, modify meeting attendees, 
         modify the duration of meetings, modify the topics to be discussed during meetings.
         If the user requests to schedule a meeting, call \`add_Meeting\` to save it.`,
-
+        
       prompt: `The task to do now is ${task}`,
 
       tools: {
-        addMeeting: tool({
+        addMeeting: tool ({
           description:
             "Save meeting. Use this when the user wants to schedule a meeting",
-          parameters: z.object({
-            dataMeeting: z.array(
-              z.object({
-                message: z
-                  .string()
-                  .describe("Report if it is correct or report the error."),
-                what: z
-                  .array(z.string())
-                  .describe(
-                    "What you're going to do. It should be Schedule Meeting, Delete Meeting, Move Meeting, Add Attendees, Remove Attendees, Add Topics, Delete Topics, or any combination between them."
-                  ),
-                who: z.array(z.string()).describe("Meeting participants"),
-                when: z
-                  .string()
-                  .regex(/^\d{4}-\d{2}-\d{2}$/, {
-                    message: "Meeting date must be in the format YYYY-MM-DD.",
-                  })
-                  .describe(
-                    `Today is ${today}. Meeting date. Must be YYYY-MM-DD.`
-                  ),
-                since: z
-                  .string()
-                  .regex(/^(2[0-3]|[01]?[0-9]):([0-5][0-9])$/, {
-                    message:
-                      "Meeting start time must be in the format HH:mm (24-hour).",
-                  })
-                  .describe(
-                    "Meeting start time. Response in the format HH:mm."
-                  ),
-                until: z
-                  .string()
-                  .regex(/^(2[0-3]|[01]?[0-9]):([0-5][0-9])$/, {
-                    message:
-                      "Meeting end time must be in the format HH:mm (24-hour).",
-                  })
-                  .describe("Meeting end time. Response in the format HH:mm."),
-                about: z
-                  .array(z.string())
-                  .describe("Topics to be discussed during the meeting."),
-                duration: z
-                  .string()
-                  .regex(/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/, {
-                    message: "Duration must be in the format HH:mm.",
-                  })
-                  .describe(
-                    "Duration of the meeting. Must be in HH:mm. It is not the same as Meeting Time. Default take an hour."
-                  ),
-              })
-            ),
-          }),
 
+          parameters: z.object({
+            dataMeeting: z.object({
+              message: z
+                .string()
+                .describe("Report if it is correct or report the error."),
+              what: z
+                .array(z.string())
+                .describe(
+                  "What you're going to do. It should be Schedule Meeting, Delete Meeting, Move Meeting, Add Attendees, Remove Attendees, Add Topics, Delete Topics, or any combination between them."
+                ),
+              who: z.array(z.string()).describe("Meeting participants"),
+              when: z
+                .string()
+                .regex(/^\d{4}-\d{2}-\d{2}$/, {
+                  message: "Meeting date must be in the format YYYY-MM-DD.",
+                })
+                .describe(
+                  `Today is ${today}. Meeting date. Must be YYYY-MM-DD.`
+                ),
+              since: z
+                .string()
+                .regex(/^(2[0-3]|[01]?[0-9]):([0-5][0-9])$/, {
+                  message:
+                    "Meeting start time must be in the format HH:mm (24-hour).",
+                })
+                .describe("Meeting start time. Response in the format HH:mm."),
+              until: z
+                .string()
+                .regex(/^(2[0-3]|[01]?[0-9]):([0-5][0-9])$/, {
+                  message:
+                    "Meeting end time must be in the format HH:mm (24-hour).",
+                })
+                .describe("Meeting end time. Response in the format HH:mm."),
+              about: z
+                .array(z.string())
+                .describe("Topics to be discussed during the meeting."),
+              duration: z
+                .string()
+                .regex(/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/, {
+                  message: "Duration must be in the format HH:mm.",
+                })
+                .describe(
+                  "Duration of the meeting. Must be in HH:mm. It is not the same as Meeting Time. Default take an hour."
+                ),
+            }),
+          }),
           execute: async ({ dataMeeting }) => {
             console.log("Estoy en generate");
-            const { message, what, who, when, since, until, about, duration } =
-              dataMeeting;
             try {
               await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -95,7 +89,7 @@ export async function POST(request) {
         }),
       },
     });
-
+    
     const partialObjects = [];
     for await (const partialObject of partialObjectStream) {
       partialObjects.push(partialObject);
@@ -127,4 +121,5 @@ export async function POST(request) {
     console.error("Error en POST", error);
     return new Response("Internal Server Error", { status: 500 });
   }
+  return
 }
